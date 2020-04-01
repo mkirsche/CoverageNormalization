@@ -1,0 +1,11 @@
+*.bam*
+*.sam
+*.txt
+*.fa
+*.png
+.project
+.classpath
+.settings/
+*/*.class
+output*
+bin/
