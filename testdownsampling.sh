@@ -1,3 +1,11 @@
+#!/bin/bash
+
+if [ "$#" -ne 2 ]
+then
+  echo "testdownsampling.sh coverage outdir"
+  exit
+fi
+
 COVERAGE=$1
 OUTDIR=$2
 mkdir $OUTDIR
