@@ -1,3 +1,5 @@
+#!/bin/bash
+
 javac src/*.java
 OUTDIR=output_sorted
 #./testdownsampling.sh 30 $OUTDIR
