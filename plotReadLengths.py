@@ -1,8 +1,14 @@
+#!/usr/bin/env python3
+
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 import sys
+
+if (len(sys.argv) != 3):
+  print("plotReadLengths.py alllens.txt samplelens.txt");
+  exit(0);
 
 allFn = sys.argv[1]
 sampleFn = sys.argv[2]

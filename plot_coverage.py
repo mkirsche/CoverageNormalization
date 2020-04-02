@@ -1,9 +1,15 @@
+#!/usr/bin/env python3
+
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
 import sys
 import numpy as np
+
+if (len(sys.argv) != 2):
+  print("plot_coverage.py oldcov.newcov.txt")
+  exit(0)
 
 fn = sys.argv[1]
 with open(fn) as f:

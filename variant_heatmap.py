@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import matplotlib
 #matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -5,11 +7,19 @@ import seaborn as sns
 import numpy as np
 import pandas
 import sys
+import os.path
 
 homozygous = False
 for x in sys.argv:
   if x == '--homozygous':
     homozygous = True
+  elif x == "-h":
+    print("variant_heatmap.py [--homozygous]")
+    exit(0)
+
+if (not os.path.exists("output_sorted")):
+  print("Cant find output_sorted directory")
+  exit(0)
 
 covs = [30, 50, 100, 200, 500, 1000, 10000]
 covLabels = [str(x) for x in covs]
