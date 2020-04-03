@@ -46,6 +46,7 @@ public class NormalizeCoverage {
 		System.out.println();
 		System.out.println("Required args:");
 		System.out.println("  input (String) - a SAM file with the alignments of all of the reads");
+		System.out.println();
 		System.out.println("Optional args:");
 		System.out.println("  coverage_threshold (int)    [50]    - the coverage to require at each base (if original coverage is high enough)");
 		System.out.println("  genome_max_len     (int)    [31000] - an upper bound on the genome length)");
