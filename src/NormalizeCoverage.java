@@ -53,7 +53,7 @@ public class NormalizeCoverage {
 		System.out.println("  covfile            (String) []      - the file containing coverage from other samples");
 		System.out.println("  --qual_sort                         - prioritize reads with higher alignment quality");
 		System.out.println("  --input_csv                         - expect the input to be a Rampart-formatted CSV file");
-		System.out.println("  --no_logging                        - expect the input to be a Rampart-formatted CSV file");
+		System.out.println("  --no_logging                        - don't produce logging files");
 
 		System.out.println();
 	}
