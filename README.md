@@ -27,7 +27,7 @@ Required args:
   
 Optional args:
   coverage_threshold (int)    [50]    - the coverage to require at each base (if original coverage is high enough)
-  genome_max_len     (int)    [31000] - an upper bound on the genome length)
+  genome_max_len     (int)    [31000] - an upper bound on the genome length
   output             (String) []      - the file to write downsampled reads to
   covfile            (String) []      - the file containing coverage from other samples
   --qual_sort                         - prioritize reads with higher alignment quality

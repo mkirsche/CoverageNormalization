@@ -49,7 +49,7 @@ public class NormalizeCoverage {
 		System.out.println();
 		System.out.println("Optional args:");
 		System.out.println("  coverage_threshold (int)    [50]    - the coverage to require at each base (if original coverage is high enough)");
-		System.out.println("  genome_max_len     (int)    [31000] - an upper bound on the genome length)");
+		System.out.println("  genome_max_len     (int)    [31000] - an upper bound on the genome length");
 		System.out.println("  output             (String) []      - the file to write downsampled reads to");
 		System.out.println("  covfile            (String) []      - the file containing coverage from other samples");
 		System.out.println("  --qual_sort                         - prioritize reads with higher alignment quality");
