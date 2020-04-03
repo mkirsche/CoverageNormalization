@@ -5,6 +5,7 @@
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.PrintWriter;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -18,11 +19,22 @@ public class NormalizeCoverage {
 	// The amount of coverage we want to keep everywhere
 	static int COV_THRESHOLD = 50;
 	
+	// Whether or not to sort by quality values
 	static boolean QUAL_SORT = false;
 	
 	static int RAND_SEED = -1;
 	
+	// Whether or not to use Rampart-style CSV files in place of SAM files
+	static boolean INPUT_CSV = false;
+	
+	// Input and output filenames
 	static String fn = "", ofn = "";
+	
+	// File containing the cumulative coverage information with one byte per position
+	static String coverageFn = "";
+	
+	// Whether or not to perform logging
+	static boolean logStats = true;
 	
 	/*
 	 * Prints out usage instructions
@@ -38,7 +50,11 @@ public class NormalizeCoverage {
 		System.out.println("  coverage_threshold (int)    [50]    - the coverage to require at each base (if original coverage is high enough)");
 		System.out.println("  genome_max_len     (int)    [31000] - an upper bound on the genome length)");
 		System.out.println("  output             (String) []      - the file to write downsampled reads to");
+		System.out.println("  covfile            (String) []      - the file containing coverage from other samples");
 		System.out.println("  --qual_sort                         - prioritize reads with higher alignment quality");
+		System.out.println("  --input_csv                         - expect the input to be a Rampart-formatted CSV file");
+		System.out.println("  --no_logging                        - expect the input to be a Rampart-formatted CSV file");
+
 		System.out.println();
 	}
 	
@@ -57,6 +73,14 @@ public class NormalizeCoverage {
 				{
 					QUAL_SORT = true;
 				}
+				if(s.endsWith("input_csv"))
+				{
+					INPUT_CSV = true;
+				}
+				if(s.endsWith("no_logging"))
+				{
+					logStats = false;
+				}
 			}
 			else
 			{
@@ -70,6 +94,10 @@ public class NormalizeCoverage {
 				else if(key.equals("output"))
 				{
 					ofn = val;
+				}
+				else if(key.equals("covfile"))
+				{
+					coverageFn = val;
 				}
 				else if(key.equals("coverage_threshold"))
 				{
@@ -85,22 +113,16 @@ public class NormalizeCoverage {
 	
 	public static void main(String[] args) throws Exception
 	{
+		// Print help menu for -h or --help
 		if(args.length == 0 || args[0].equalsIgnoreCase("-h") || args[0].equalsIgnoreCase("--help"))
 		{
 			usage();
+			System.exit(0);
 		}
 		else
 		{
 			parseArgs(args);
 		}
-		
-		// Used to bypass command line interface for local development
-		/*
-		if(fn.length() == 0)
-		{
-			fn = "jhu004.sam";
-		}
-		*/
 		
 		// Check that input file actually exists
 		if(!new File(fn).exists())
@@ -113,26 +135,63 @@ public class NormalizeCoverage {
 		
 		// Get the reference intervals for all reads
 		ArrayList<Read> reads = new ArrayList<Read>();
+		int lineIdx = 0;
 		while(input.hasNext())
 		{
 			String line = input.nextLine();
-			if(line.startsWith("@"))
+			
+			// Ignore SAM header lines
+			boolean isReadLine = true;
+			if(!INPUT_CSV && line.startsWith("@"))
+			{
+				isReadLine = false;
+			}
+			
+			// Ignore first line in CSV
+			if(INPUT_CSV && lineIdx == 0)
+			{
+				isReadLine = false;
+			}
+			
+			// Increment line number
+			lineIdx++;
+			
+			if(!isReadLine)
 			{
 				continue;
 			}
-			int[] startEnd = refInterval(line);
 			
-			String[] tokens = line.split("\t");
+			// Initialize read fields: start and end on reference, read length, and quality score
+			int[] startEnd = new int[2];
+			int rl = 0;
+			double qual = 0.0;
 			
-			int rl = cigarQueryLength(tokens[5]);
-			double qual = 1.0 * cigarNumMatches(tokens[5]) / rl;
-						
+			if(INPUT_CSV)
+			{
+				// CSV format - parse fields
+				String[] tokens = line.split(",");
+				
+				startEnd = new int[] {Integer.parseInt(tokens[6]), Integer.parseInt(tokens[7])};
+				rl = Integer.parseInt(tokens[1]);
+				qual = 1.0 * Integer.parseInt(tokens[8]) / rl;
+			}
+			else
+			{
+				// SAM format - parse fields
+				String[] tokens = line.split("\t");
+
+				startEnd = refInterval(line);
+				rl = cigarQueryLength(tokens[5]);
+				qual = 1.0 * cigarNumMatches(tokens[5]) / rl;
+			}
+			
+			// Add the read to the list	
 			reads.add(new Read(reads.size(), startEnd[0], startEnd[1], rl, qual));
 		}
 		
 		int n = reads.size();
 		
-		// This will be filled with the coverage in the original dataset
+		// This will be filled with total coverage of each position
 		int[] cov = new int[MAX_LEN];
 		
 		// Add +1 to represent coverage going up at start and -1 to represent coverage down at end
@@ -143,7 +202,8 @@ public class NormalizeCoverage {
 			cov[r.end]--;
 		}
 		
-		// Now each element of cov will be coverage(i) - coverage(i-1), so take cumulative sum to make it actual coverage
+		// Now each element of cov will be coverage(i) - coverage(i-1),
+		// so take the cumulative sum to make it actual coverage
 		for(int i = 1; i<cov.length; i++)
 		{
 			cov[i] += cov[i-1];
@@ -164,19 +224,43 @@ public class NormalizeCoverage {
 			Collections.shuffle(reads);
 		}
 		
+		// The coverage so far of each position by reads we choose to keep
 		int[] readCov = new int[MAX_LEN];
 		
+		// Initialize reader for coverage file
+		RandomAccessFile coverageFileReader = null;
+		if(coverageFn != null && coverageFn.length() > 0 && new File(coverageFn).exists())
+		{
+			if(new File(coverageFn).length() > 0)
+			{
+				coverageFileReader = new RandomAccessFile(coverageFn, "r");
+			}
+		}
+		
+		// If we have a coverage file, add the data there to the read coverage array
+		if(coverageFileReader != null)
+		{
+			byte[] buf = new byte[MAX_LEN];
+			coverageFileReader.seek(0);
+			coverageFileReader.read(buf);
+			for(int i = 0; i<MAX_LEN; i++) readCov[i] += buf[i];
+		}
+		
+		// True for reads we want to keep
 		boolean[] used = new boolean[n];
 		
-		// Go through the reads, and if there's some position covered by it that's below coverage threshold, take the read
+		// Go through the reads, and if there's some position covered by it that's
+		// below coverage threshold, take the read
 		for(Read r : reads)
 		{
+			// Check the minimum coverage across the interval of the read
 			int minCov = readCov[r.start];
 			for(int i = r.start; i < r.end; i++)
 			{
 				minCov = Math.min(readCov[i], minCov);
 			}
 			
+			// If the minimum is low enough, take the read and add its coverage
 			if(minCov < COV_THRESHOLD)
 			{
 				used[r.index] = true;
@@ -188,17 +272,32 @@ public class NormalizeCoverage {
 		}
 		
 		// Calculate some statistics
+		
+		// Total quality score of all reads
 		double totalQual = 0;
+		
+		// Total quality score of all used reads
 		double usedTotalQual = 0;
 		
+		// Total number of reads
 		int totalCount = n;
+		
+		// Total number of used reads
 		int usedCount = 0;
 		
+		// Total number of bases across all reads
 		int totalBases = 0;
+		
+		// Total number of bases across all used reads
 		int usedBases = 0;
 		
+		// Minimum coverage in full dataset (ignoring first and last 50 bp)
 		int minCov = 987654321;
+		
+		// Minimum coverage among kept reads (ignoring first and last 50 bp)
 		int totalMin = 987654321;
+		
+		// Compute the statistics outlind above
 		for(int i = 0; i<n; i++)
 		{
 			Read r = reads.get(i);
@@ -217,13 +316,14 @@ public class NormalizeCoverage {
 		{
 			if(cov[i] > 0)
 			{
-				minCov = Math.min(minCov, readCov[i]);
+				minCov = Math.min(minCov, cov[i]);
 				totalMin = Math.min(totalMin, readCov[i]);
 			}
 			
-			if(cov[i] >= 50 && readCov[i] < 50)
+			if(cov[i] >= COV_THRESHOLD && readCov[i] < COV_THRESHOLD)
 			{
-				System.out.println(i+" "+cov[i]+" "+readCov[i]);
+				System.out.println("Coverage dropped below threshold at position " + i+"; "
+						+ "Old coverage="+cov[i]+", New coverage="+readCov[i]);
 			}
 		}
 		
@@ -232,11 +332,13 @@ public class NormalizeCoverage {
 		{
 			if(cov[i] != readCov[i])
 			{
-				System.out.println(i+" "+cov[i]+" "+readCov[i]);
+				System.out.println("Uneven coverage near ends at position " + i+"; "
+						+ "Old coverage =" + cov[i]+", New coverage="+readCov[i]);
 			}
 			if(cov[MAX_LEN - i - 1] != readCov[MAX_LEN - i - 1])
 			{
-				System.out.println((MAX_LEN - i - 1)+" "+cov[MAX_LEN - i - 1]+" "+readCov[MAX_LEN - i - 1]);
+				System.out.println("Uneven coverage near ends at position " + (MAX_LEN - i - 1)+"; "
+						+ "Old coverage =" + cov[MAX_LEN - i - 1]+", New coverage="+readCov[MAX_LEN - i - 1]);
 			}
 		}
 		
@@ -252,33 +354,44 @@ public class NormalizeCoverage {
 		System.out.println("Old min coverage: " + totalMin);
 		System.out.println("Downsampled min coverage: " + minCov);
 		
-		// Make new SAM file
+		// Go through reads and make file with filtered reads
+		
 		input = new Scanner(new FileInputStream(new File(fn)));
 		
 		// Generate output filename
 		if(ofn.length() == 0)
 		{
-			if(fn.endsWith(".sam"))
+			String suff = INPUT_CSV ? ".csv" : ".sam";
+			if(fn.endsWith(suff))
 			{
-				ofn = fn.substring(0, fn.length() - 4) + ".covfiltered.sam";
+				ofn = fn.substring(0, fn.length() - 4) + ".covfiltered" + suff;
 			}
 			else
 			{
-				ofn = fn + ".covfiltered.sam";
+				ofn = fn + ".covfiltered" + suff;
 			}
 		}
 		
 		// Write out the reads we want to keep
 		PrintWriter out = new PrintWriter(new File(ofn));
 		int readIndex = 0;
+		lineIdx = 0;
 		while(input.hasNext())
 		{
 			String line = input.nextLine();
-			if(line.startsWith("@"))
+			if(!INPUT_CSV && line.startsWith("@"))
 			{
 				out.println(line);
+				lineIdx++;
 				continue;
 			}
+			if(INPUT_CSV && lineIdx == 0)
+			{
+				out.println(line);
+				lineIdx++;
+				continue;
+			}
+			lineIdx++;
 			if(used[readIndex])
 			{
 				out.println(line);
@@ -286,34 +399,50 @@ public class NormalizeCoverage {
 			readIndex++;
 		}
 		
-		// Print the old and new coverage of each base
-		String covFn = "coverage.txt";
-		PrintWriter coverageOut = new PrintWriter(new File(covFn));
-		
-		for(int i = 0; i<MAX_LEN; i++)
+		// Output coverage at each base if a coverage file was provided
+		if(coverageFn != null && coverageFn.length() > 0)
 		{
-			if(cov[i] > 0)
+			coverageFileReader = new RandomAccessFile(coverageFn, "rw");
+			byte[] toWrite = new byte[MAX_LEN];
+			for(int i = 0; i<MAX_LEN; i++)
 			{
-				coverageOut.println(cov[i]+" "+readCov[i]);
+				toWrite[i] = (byte)Math.min(readCov[i], COV_THRESHOLD);
 			}
+			coverageFileReader.write(toWrite, 0, MAX_LEN);
+			coverageFileReader.close();
 		}
-		coverageOut.close();
 		
-		// Print out the read length in the whole dataset and in the sample
-		String allLengthsFn = "lengths_all.txt";
-		String sampleLengthsFn = "lengths_sample.txt";
-		PrintWriter allLengthsOut = new PrintWriter(new File(allLengthsFn));
-		PrintWriter sampleLengthsOut = new PrintWriter(new File(sampleLengthsFn));
-		for(int i = 0; i<n; i++)
+		if(logStats)
 		{
-			allLengthsOut.println(reads.get(i).readLength);
-			if(used[reads.get(i).index])
+			// Print the old and new coverage of each base
+			String coverageReadableFn = "coverage.txt";
+			PrintWriter coverageReadableOut = new PrintWriter(new File(coverageReadableFn));
+			
+			for(int i = 0; i<MAX_LEN; i++)
 			{
-				sampleLengthsOut.println(reads.get(i).readLength);
+				if(cov[i] > 0)
+				{
+					coverageReadableOut.println(cov[i]+" "+readCov[i]);
+				}
 			}
+			coverageReadableOut.close();
+			
+			// Print out the read length in the whole dataset and in the sample
+			String allLengthsFn = "lengths_all.txt";
+			String sampleLengthsFn = "lengths_sample.txt";
+			PrintWriter allLengthsOut = new PrintWriter(new File(allLengthsFn));
+			PrintWriter sampleLengthsOut = new PrintWriter(new File(sampleLengthsFn));
+			for(int i = 0; i<n; i++)
+			{
+				allLengthsOut.println(reads.get(i).readLength);
+				if(used[reads.get(i).index])
+				{
+					sampleLengthsOut.println(reads.get(i).readLength);
+				}
+			}
+			allLengthsOut.close();
+			sampleLengthsOut.close();
 		}
-		allLengthsOut.close();
-		sampleLengthsOut.close();
 		
 		input.close();
 		out.close();
