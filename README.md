@@ -10,6 +10,8 @@ This gives the algorithm a few properties:
 * For any position in the genome with total coverage less than the threshold, all reads spanning it will be kept
 * For any position in the genome with total coverage greater than or equal to the threshold, its coverage among the kept reads will not drop below the threshold.
 
+Slides giving more detail about the method and preliminary results can be found here: [CoverageNormalization.pdf](https://github.com/mkirsche/CoverageNormalization/blob/master/slides/CoverageNormalization.pdf)
+
 ## Compilation
 
 ``javac src/*.java``
