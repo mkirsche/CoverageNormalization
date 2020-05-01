@@ -33,6 +33,7 @@ Optional args:
   --qual_sort                         - prioritize reads with higher alignment quality
   --input_csv                         - expect the input to be a Rampart-formatted CSV file
   --no_logging                        - don't produce logging files
+  --even_strand                       - tries to get even coverage between the strands when possible
   ```
   
 ## Other Scripts
@@ -40,6 +41,7 @@ Optional args:
 ### Post-processing and plotting
 * *plot_coverage.py* - Generate bar plots and histograms of the coverage of each position before and after normalization
 * *plotReadLengths.py* - Plots histograms of read lengths before and after normalization
+* *PlotStrandBias.py* - Plots histograms of strand bias on full dataset and two samples
 
 ### Pipelines/Utilities
 * *run_medaka_sample.sh* - Runs medaka for consensus and variant calling on a particular BAM file
@@ -47,5 +49,6 @@ Optional args:
 * *testdownsampling.sh* - Produces 10 samples with a given threshold and runs medaka on each, counting the frequency of each variant
 * *variant_heatmap.py* - Plots heatmaps of the number of trials where different SNPs were called with medaka
 * *run_full_test.sh* - Tests 10 samples for each of a number of coverage thresholds and generates heatmaps for all variant calls and for homozygous variant calls
+* *strandbiastest.sh* - Runs normalization with and without strand adjustment and tests difference in resulting strand bias
 * *src/Vcf2Fasta.java* - Takes a reference and a VCF, and produces a consensus genome sequence with all of the given variants integrated
 
