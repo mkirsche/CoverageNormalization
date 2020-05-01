@@ -31,8 +31,8 @@ public class NormalizePairedReads {
 	 * Prints out usage instructions
 	 */
 	static void usage() {
-		System.out.println("Usage: java -cp src NormalizeCoverage [args]");
-		System.out.println("  Example: java -cp src NormalizeCoverage input=jhu004.sam");
+		System.out.println("Usage: java -cp src NormalizePairedReads [args]");
+		System.out.println("  Example: java -cp src NormalizePairedReads input=jhu004.sam");
 		System.out.println();
 		System.out.println("Required args:");
 		System.out.println("  input (String) - a SAM file with the alignments of all of the reads");
