@@ -238,7 +238,6 @@ public class NormalizeCoverage {
 
 				@Override
 				public int compare(Read a, Read b) {
-					// TODO Auto-generated method stub
 					return Double.compare(b.qual, a.qual);
 				}
 			});
@@ -395,8 +394,8 @@ public class NormalizeCoverage {
 		System.out.println("Total bases covered (unfiltered): " + totalBases);
 		System.out.println("Downsampled bases covered: " + usedBases);
 
-		System.out.println("Old min coverage: " + totalMin);
-		System.out.println("Downsampled min coverage: " + minCov);
+		System.out.println("Old min coverage: " + minCov);
+		System.out.println("Downsampled min coverage: " + totalMin);
 
 		System.out.println("Old min + strand coverage: " + minFullPlusCov);
 		System.out.println("Downsampled min + strand coverage: " + minSamplePlusCov);
@@ -513,7 +512,6 @@ public class NormalizeCoverage {
 
 		@Override
 		public int compareTo(Read o) {
-			// TODO Auto-generated method stub
 			return start - o.start;
 		}
 	}
