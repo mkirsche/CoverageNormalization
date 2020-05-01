@@ -38,6 +38,11 @@ Optional args:
   
 ## Other Scripts
 
+### Fast5 Filtering
+
+This script filters a fast5 file to contain only the normalized reads.  It depends on [ont_fast5_api](https://github.com/nanoporetech/ont_fast5_api) being added to the user's path with `pip install ont-fast5-api`.
+* *filterfast5.sh* [input fast5 directory] [normalized sam file] [output directory]
+
 ### Post-processing and plotting
 * *plot_coverage.py* - Generate bar plots and histograms of the coverage of each position before and after normalization
 * *plotReadLengths.py* - Plots histograms of read lengths before and after normalization
